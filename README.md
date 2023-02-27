@@ -84,6 +84,8 @@ bscpylgtvcommand 192.168.1.18 get_configs "[\"tv.model.*\"]" true
 bscpylgtvcommand 192.168.1.18 set_configs "{\"tv.model.motionProMode\": \"OLED Motion Pro\"}"
 # Display Total Power On Time under TV Information on EU models where it's hidden (using JSON)
 bscpylgtvcommand 192.168.1.18 set_configs "{\"tv.conti.supportUsedTime\": true}"
+# Take screenshot
+bscpylgtvcommand 192.168.1.18 take_screenshot
 # Soft reboot the TV in case it is malfunctioning: reboot_soft [webos_version] (e.g. for older WebOS: reboot_soft 4)
 bscpylgtvcommand 192.168.1.18 reboot_soft
 # Turn the TV off (standby)
@@ -215,7 +217,7 @@ set_oled_light, set_contrast, set_brightness, set_color
 upload_1d_lut, upload_1d_lut_from_file, set_1d_lut_en (?),
 upload_3d_lut_bt709, upload_3d_lut_bt709_from_file, upload_3d_lut_bt2020, upload_3d_lut_bt2020_from_file, 
 set_1d_en_2_2, set_1d_en_0_45,
-set_3by3_gamut_data_bt709, set_3by3_gamut_data_bt2020, set_3by3_gamut_data_hdr (only used in 2019 models), set_3by3_gamut_en (?),
+set_3by3_gamut_data_bt709, set_3by3_gamut_data_bt2020, set_3by3_gamut_data_hdr (only used in 2019 models), set_3by3_gamut_data_from_file, set_3by3_gamut_en (?),
 set_tonemap_params (for HDR10 picture modes),
 set_dolby_vision_config_data (not recommended on >=2020 models!)
 ```
@@ -344,9 +346,10 @@ bscpylgtvcommand 192.168.1.18 end_calibration
 
 #### Get calibration commands
 
-- NOTE: it's completely broken in newer models (>=2020)
+- NOTE: they can be partially or completely broken (depending on firmware version, picture preset, etc)
 - they can be used inside or outside of calibration mode as well
 - they return the data of the currently active picture mode
+- in case of factory LUTs (sometimes even with custom LUTs as well), they return the post-processed LUTs with all customizations factored in (including customizations via the user settings menu or service menu)
 
 The following commands are supported via calibration API:
 ```
@@ -361,6 +364,38 @@ Example usage (all the supported commands have the same syntax):
 bscpylgtvcommand 192.168.1.18 start_calibration hdr_game
 # Get 3x3 color matrix (no extra parameter is required)
 bscpylgtvcommand 192.168.1.18 get_3by3_gamut_data
+# End calibration mode
+bscpylgtvcommand 192.168.1.18 end_calibration
+```
+
+##### Backup and restore 1D/3D LUTs and 3x3 color matrices
+
+It's possible to backup and resture 1D/3D LUTs and 3x3 color matrices (if the getter interface of the calibration API works fine).
+
+Example usage for backuping:
+```bash
+# Start calibration mode
+bscpylgtvcommand 192.168.1.18 start_calibration hdr_cinema
+# Backup 3x3 color matrix
+bscpylgtvcommand 192.168.1.18 get_3by3_gamut_data "hdr_cinema_3x3.matrix"
+# Backup 1D LUT
+bscpylgtvcommand 192.168.1.18 get_1d_lut "hdr_cinema.1dlut"
+# Backup 3D LUT
+bscpylgtvcommand 192.168.1.18 get_3d_lut "hdr_cinema.3dlut" -s
+# End calibration mode
+bscpylgtvcommand 192.168.1.18 end_calibration
+```
+
+Example usage for restoring:
+```bash
+# Start calibration mode
+bscpylgtvcommand 192.168.1.18 start_calibration hdr_cinema
+# Restore 3x3 color matrix
+bscpylgtvcommand 192.168.1.18 set_3by3_gamut_data_from_file "bt2020" "hdr_cinema_3x3.matrix"
+# Restore 1D LUT
+bscpylgtvcommand 192.168.1.18 upload_1d_lut_from_file "hdr_cinema.1dlut"
+# Restore 3D LUT
+bscpylgtvcommand 192.168.1.18 upload_3d_lut_bt2020_from_file "hdr_cinema.3dlut" -s
 # End calibration mode
 bscpylgtvcommand 192.168.1.18 end_calibration
 ```
